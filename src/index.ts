@@ -12,15 +12,25 @@ const runAll = async(): Promise<void> => {
   const alice = (await aliceSigner.getAccounts())[0].address
   const signingClient = await SigningCosmWasmClient.connectWithSigner(rpc, aliceSigner)
 
+  const marketplaceContract = "aura1sxfyrcqsymqq4zgllzd3gg209w2rq4rcaza3t8c3drzyfzhzk56q2t07zn"
   // 1. Create collection
-  const collectionContract = await createCollection("My collection", "MC1", alice, signingClient)
+  const collectionContract = await createCollection(marketplaceContract, "My collection", "MC1", alice, signingClient)
   console.log('collectionContract', collectionContract)
 
   // 2. Mint NFT
-  await mintNft(collectionContract, '1', alice, signingClient);
+  await mintNft(marketplaceContract, collectionContract, '1', alice, signingClient);
+
+  // 3. Approve for marketplace
+  await approveForMarketplace(marketplaceContract, collectionContract, '1', alice, signingClient);
+
+  // 4. List NFT
+  await listNft(marketplaceContract, collectionContract, '1', alice, signingClient);
+
+  // 5. Buy NFT
+  await buyNFT(marketplaceContract, collectionContract, '1');
 }
 
-async function createCollection(name: string, symbol: string, singer: string, signingClient: SigningCosmWasmClient){
+async function createCollection(marketplaceContract: string, name: string, symbol: string, singer: string, signingClient: SigningCosmWasmClient){
   const msg = {
     create_collection: {
       name,
@@ -31,7 +41,7 @@ async function createCollection(name: string, symbol: string, singer: string, si
     typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
     value: {
       sender: singer,
-      contract: "aura1sxfyrcqsymqq4zgllzd3gg209w2rq4rcaza3t8c3drzyfzhzk56q2t07zn",
+      contract: marketplaceContract,
       msg: toUtf8(JSON.stringify(msg)),
     }
   }
@@ -52,11 +62,11 @@ async function createCollection(name: string, symbol: string, singer: string, si
   return eventData.collection_contract;
 }
 
-async function mintNft(collection_contract: string, token_id: string, singer: string, signingClient: SigningCosmWasmClient){
+async function mintNft(marketplaceContract: string, collectionContract: string, tokenId: string, singer: string, signingClient: SigningCosmWasmClient){
   const msg = {
     mint_nft: {
-      contract_address: collection_contract,
-      token_id: token_id,
+      contract_address: collectionContract,
+      token_id: tokenId,
       token_uri: 'google.com'
     }
   }
@@ -64,7 +74,7 @@ async function mintNft(collection_contract: string, token_id: string, singer: st
     typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
     value: {
       sender: singer,
-      contract: "aura1sxfyrcqsymqq4zgllzd3gg209w2rq4rcaza3t8c3drzyfzhzk56q2t07zn",
+      contract: marketplaceContract,
       msg: toUtf8(JSON.stringify(msg)),
     }
   }
@@ -78,7 +88,120 @@ async function mintNft(collection_contract: string, token_id: string, singer: st
       }]
     });
 
-  console.log("Mint nft successfully, tx hash:", tx.transactionHash);
+  console.log("Mint nft , tx hash:", tx.transactionHash);
+}
+
+async function listNft(marketplaceContract: string, collectionContract: string, tokenId: string,  singer: string, signingClient: SigningCosmWasmClient) {
+  const msg = {
+    list_nft: {
+      contract_address: collectionContract,
+      token_id: tokenId,
+      listing_config: {
+        price: {
+          amount: "1000",
+          denom: "ueaura"
+        },
+        start_time: {
+          at_height: 7252528
+        },
+        end_time: {
+          at_height: 7752528
+        }
+      }
+    }
+  }
+
+  const sendMsg: MsgExecuteContractEncodeObject = {
+    typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+    value: {
+      sender: singer,
+      contract: marketplaceContract,
+      msg: toUtf8(JSON.stringify(msg)),
+    }
+  }
+
+  const tx = await signingClient.signAndBroadcast(singer, [sendMsg],
+    {
+      gas: "500000",
+      amount: [{
+        denom: "ueaura",
+        amount: "1000"
+      }]
+    });
+
+  console.log("List nft , tx hash:", tx);
+}
+
+async function approveForMarketplace(marketplaceContract: string, collectionContract: string, tokenId: string, singer: string, signingClient: SigningCosmWasmClient) {
+  const msg = {
+    approve: {
+      spender: marketplaceContract,
+      expires: {
+        never: {}
+      },
+      token_id: tokenId,
+    }
+  }
+
+  const sendMsg: MsgExecuteContractEncodeObject = {
+    typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+    value: {
+      sender: singer,
+      contract: collectionContract,
+      msg: toUtf8(JSON.stringify(msg)),
+    }
+  }
+
+  const tx = await signingClient.signAndBroadcast(singer, [sendMsg],
+    {
+      gas: "500000",
+      amount: [{
+        denom: "ueaura",
+        amount: "836"
+      }]
+    });
+
+  console.log("Approve for marketplace , tx hash:", tx);
+}
+
+async function buyNFT(marketplaceContract: string, collectionContract: string, tokenId: string) {
+  const bobSigner: OfflineDirectSigner = await DirectSecp256k1HdWallet.fromMnemonic((await readFile("./testnet.bob.mnemonic.key")).toString(), {
+    prefix: "aura",});
+  const bob = (await bobSigner.getAccounts())[0].address
+  const signingClient = await SigningCosmWasmClient.connectWithSigner(rpc, bobSigner)
+  console.log('bob', bob);
+    
+  const msg = {
+    buy: {
+      contract_address: collectionContract,
+      token_id: tokenId,
+    }
+  }
+
+  const sendMsg: MsgExecuteContractEncodeObject = {
+    typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+    value: {
+      sender: bob,
+      contract: marketplaceContract,
+      msg: toUtf8(JSON.stringify(msg)),
+      funds: [{
+        denom: "ueaura",
+        // NFT price here
+        amount: "1000"
+      }]
+    }
+  }
+
+  const tx = await signingClient.signAndBroadcast(bob, [sendMsg],
+    {
+      gas: "500000",
+      amount: [{
+        denom: "ueaura",
+        amount: "836"
+      }]
+    });
+
+  console.log("Buy nft , tx hash:", tx);
 }
 
 runAll()
