@@ -1,0 +1,23 @@
+{
+  "name": "cosmjs-iteract-smart-contract-example",
+  "version": "1.0.0",
+  "description": "Experiment with CosmJS to execute smart contract.",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node ./src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "B9lab",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/lodash": "^4.14.200",
+    "ts-node": "10.7.0"
+  },
+  "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.31.3",
+    "@cosmjs/encoding": "^0.31.3",
+    "@cosmjs/proto-signing": "^0.31.1",
+    "@cosmjs/stargate": "0.28.2",
+    "lodash": "^4.17.21"
+  }
+}
