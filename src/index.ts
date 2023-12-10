@@ -1,5 +1,5 @@
 import { readFile } from "fs/promises"
-import { SigningCosmWasmClient, IndexedTx, MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
+import { SigningCosmWasmClient, MsgExecuteContractEncodeObject } from "@cosmjs/cosmwasm-stargate"
 import { DirectSecp256k1HdWallet, OfflineDirectSigner } from "@cosmjs/proto-signing"
 import { toUtf8 } from "@cosmjs/encoding";
 import _ from 'lodash';
